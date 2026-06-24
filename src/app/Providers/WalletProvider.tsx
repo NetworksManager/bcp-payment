@@ -1,3 +1,4 @@
+// Fixed providers folder
 'use client';
 
 import React, { FC, ReactNode, useMemo } from 'react';
