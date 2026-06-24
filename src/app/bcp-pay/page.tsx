@@ -63,7 +63,7 @@ export default function BcpPaymentPage() {
     const amountUSD = (usdValue * quantity).toFixed(2);
 
     const emailData = {
-      from: "BitcoinPalooza <noreply@bitcoinpalooza.nyc>",
+      from: "BitcoinPalooza <onboarding@resend.dev>",
       to: [email, "hello@bitcoinpalooza.nyc"],
       subject: `BitcoinPalooza Ticket Confirmation - ${ticketName}`,
       html: `
