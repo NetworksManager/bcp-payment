@@ -25,52 +25,74 @@ export default function BcpPaymentPage() {
   const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85"; 
   const MERCHANT_WALLET = "J9VyqQc3EPo2r7GQeTDQwVGksU8B1u62wcWAaFFAzYG8";
 
-  // USD value after 50% discount
   const usdValue = ticketType === 'vip' ? 49.5 : 19.5;
 
-  // Fetch real-time BCP price from GeckoTerminal
+  // Fetch real-time BCP price
   const fetchBcpPrice = async () => {
     try {
       const poolAddress = "Hd7XZ57jveHneHwFcfgk6Ch71tGQZW6wr3s1LwvgNgKX";
-      
-      const res = await fetch(
-        `https://api.geckoterminal.com/api/v2/networks/solana/pools/${poolAddress}`
-      );
-      
+      const res = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${poolAddress}`);
       const data = await res.json();
 
-      if (data.data && data.data.attributes) {
+      if (data.data?.attributes?.base_token_price_usd) {
         const price = parseFloat(data.data.attributes.base_token_price_usd);
-        
         if (price > 0) {
-          const needed = (usdValue * quantity) / price;
-          setBcpAmount(needed);
-          console.log("✅ GeckoTerminal Price:", price);
+          setBcpAmount((usdValue * quantity) / price);
           return;
         }
       }
-
-      // Fallback
       setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
-
-    } catch (error) {
-      console.error("Price fetch failed");
+    } catch {
       setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
     }
   };
 
-  // Fetch price when ticket type or quantity changes
-  useEffect(() => {
-    fetchBcpPrice();
-  }, [ticketType, quantity]);
+  useEffect(() => { fetchBcpPrice(); }, [ticketType, quantity]);
 
-  // Read URL parameters from Sitejet
+  // Read URL parameters
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('email')) setEmail(params.get('email')!);
     if (params.get('type')) setTicketType(params.get('type')!);
     if (params.get('qty')) setQuantity(parseInt(params.get('qty')!) || 1);
   }, []);
+
+  // ==================== SEND EMAILS ====================
+  const sendEmails = async () => {
+    const ticketName = ticketType === 'vip' ? 'VIP Experience' : 'General Admission';
+    const amountUSD = (usdValue * quantity).toFixed(2);
+
+    const emailData = {
+      from: "BitcoinPalooza <noreply@bitcoinpalooza.nyc>",
+      to: [email, "hello@bitcoinpalooza.nyc"],
+      subject: `BitcoinPalooza Ticket Confirmation - ${ticketName}`,
+      html: `
+        <h2>Thank you for your purchase!</h2>
+        <p><strong>Order Details:</strong></p>
+        <ul>
+          <li><strong>Email:</strong> ${email}</li>
+          <li><strong>Ticket Type:</strong> ${ticketName}</li>
+          <li><strong>Quantity:</strong> ${quantity}</li>
+          <li><strong>Amount Paid:</strong> ${bcpAmount.toFixed(2)} BCP (≈ $${amountUSD})</li>
+        </ul>
+        <p>Your ticket(s) will be sent to this email shortly.</p>
+        <p>— BitcoinPalooza Team</p>
+      `,
+    };
+
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(emailData),
+      });
+    } catch (err) {
+      console.error("Email sending failed:", err);
+    }
+  };
 
   const handlePayment = async () => {
     if (!publicKey || !signTransaction) {
@@ -98,35 +120,17 @@ export default function BcpPaymentPage() {
 
       const transaction = new Transaction();
 
-      // Create user's ATA if needed
       transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(
-          publicKey,
-          userAta,
-          publicKey,
-          mint
-        )
+        createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint)
       );
-
-      // Create merchant's ATA if needed
       transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(
-          publicKey,
-          merchantAta,
-          merchant,
-          mint
-        )
+        createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint)
       );
 
       const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
 
       transaction.add(
-        createTransferInstruction(
-          userAta,
-          merchantAta,
-          publicKey,
-          bcpAmountInSmallestUnit
-        )
+        createTransferInstruction(userAta, merchantAta, publicKey, bcpAmountInSmallestUnit)
       );
 
       transaction.feePayer = publicKey;
@@ -134,9 +138,11 @@ export default function BcpPaymentPage() {
       transaction.recentBlockhash = blockhash;
 
       const signedTx = await signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      await connection.sendRawTransaction(signedTx.serialize());
 
-      console.log("Payment successful:", signature);
+      // Send emails after successful payment
+      await sendEmails();
+
       setSuccess(true);
 
     } catch (error: any) {
@@ -152,7 +158,6 @@ export default function BcpPaymentPage() {
       <h1 className="text-3xl font-bold text-center mb-2">Pay with BCP Token</h1>
       <p className="text-center text-gray-600 mb-8">50% OFF • BitcoinPalooza</p>
 
-      {/* Order Summary */}
       <div className="bg-white border-2 border-orange-500 rounded-2xl p-6 mb-6">
         <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
         
@@ -210,7 +215,8 @@ export default function BcpPaymentPage() {
       {success && (
         <div className="bg-green-100 border border-green-500 rounded-2xl p-8 text-center">
           <h3 className="text-2xl font-bold text-green-700 mb-2">✅ Payment Successful!</h3>
-          <button onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} className="mt-4 bg-green-700 text-white px-6 py-3 rounded-xl">
+          <p className="text-green-600 mb-4">Confirmation emails have been sent.</p>
+          <button onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl">
             Return to BitcoinPalooza
           </button>
         </div>
