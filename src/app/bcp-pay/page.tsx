@@ -57,28 +57,32 @@ export default function BcpPaymentPage() {
     if (params.get('qty')) setQuantity(parseInt(params.get('qty')!) || 1);
   }, []);
 
-// ==================== SEND EMAILS (Improved) ====================
+// ==================== SEND EMAILS (Improved 2) ====================
 const sendEmails = async () => {
-  const ticketName = ticketType === 'vip' ? 'VIP Experience' : 'General Admission';
-  const amountUSD = (usdValue * quantity).toFixed(2);
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        ticketType,
+        quantity,
+        bcpAmount: bcpAmount.toFixed(2),
+        usdValue,
+      }),
+    });
 
-  const emailData = {
-    from: "BitcoinPalooza <onboarding@resend.dev>",
-    to: [email, "hello@bitcoinpalooza.nyc"],
-    subject: `BitcoinPalooza Ticket Confirmation - ${ticketName}`,
-    html: `
-      <h2>Thank you for your purchase!</h2>
-      <p><strong>Order Details:</strong></p>
-      <ul>
-        <li><strong>Email:</strong> ${email}</li>
-        <li><strong>Ticket Type:</strong> ${ticketName}</li>
-        <li><strong>Quantity:</strong> ${quantity}</li>
-        <li><strong>Amount Paid:</strong> ${bcpAmount.toFixed(2)} BCP (≈ $${amountUSD})</li>
-      </ul>
-      <p>Your ticket(s) will be sent to this email shortly.</p>
-      <p>— BitcoinPalooza Team</p>
-    `,
-  };
+    const result = await res.json();
+    
+    if (result.success) {
+      console.log("✅ Emails sent successfully");
+    } else {
+      console.error("❌ Email sending failed:", result.error);
+    }
+  } catch (err) {
+    console.error("❌ Failed to call email API:", err);
+  }
+};
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
