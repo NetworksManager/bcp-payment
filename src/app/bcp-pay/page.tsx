@@ -57,54 +57,33 @@ export default function BcpPaymentPage() {
     if (params.get('qty')) setQuantity(parseInt(params.get('qty')!) || 1);
   }, []);
 
-// ==================== SEND EMAILS (Improved 2) ====================
-const sendEmails = async () => {
-  try {
-    const res = await fetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        ticketType,
-        quantity,
-        bcpAmount: bcpAmount.toFixed(2),
-        usdValue,
-      }),
-    });
+  // ==================== SEND EMAILS ====================
+  const sendEmails = async () => {
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          ticketType,
+          quantity,
+          bcpAmount: bcpAmount.toFixed(2),
+          usdValue,
+        }),
+      });
 
-    const result = await res.json();
-    
-    if (result.success) {
-      console.log("✅ Emails sent successfully");
-    } else {
-      console.error("❌ Email sending failed:", result.error);
+      const result = await res.json();
+      
+      if (result.success) {
+        console.log("✅ Emails sent successfully");
+      } else {
+        console.error("❌ Email sending failed:", result.error);
+      }
+    } catch (err) {
+      console.error("❌ Failed to call email API:", err);
     }
-  } catch (err) {
-    console.error("❌ Failed to call email API:", err);
-  }
-};
+  };
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(emailData),
-    });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      console.log("✅ Emails sent successfully:", result);
-    } else {
-      console.error("❌ Resend API Error:", result);
-    }
-  } catch (err) {
-    console.error("❌ Email sending failed with exception:", err);
-  }
-};
   const handlePayment = async () => {
     if (!publicKey || !signTransaction) {
       alert("Please connect your wallet first");
