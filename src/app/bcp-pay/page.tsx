@@ -79,16 +79,17 @@ export default function BcpPaymentPage() {
       return;
     }
 
-    if (HELIUS_API_KEY.length < 20 || HELIUS_API_KEY.includes("74182e68-a184-40a0-83fb-ee93b634cf85")) {
-  alert("Please add your Helius API key in the code");
-  return;
-}
+    // Check if Helius key looks valid
+    if (HELIUS_API_KEY.length < 30) {
+      alert("Please add your Helius API key in the code");
+      return;
+    }
 
     setLoading(true);
 
     try {
       const connection = new Connection(
-        `https://mainnet.helius-rpc.com/?api-key=74182e68-a184-40a0-83fb-ee93b634cf85}`
+        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
       );
 
       const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
