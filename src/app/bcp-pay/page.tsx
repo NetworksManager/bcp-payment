@@ -7,7 +7,7 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { 
   getAssociatedTokenAddress, 
   createTransferInstruction, 
-  createAssociatedTokenAccountInstruction, 
+  createAssociatedTokenAccountIdempotentInstruction, 
   getAccount 
 } from '@solana/spl-token';
 
@@ -79,7 +79,6 @@ export default function BcpPaymentPage() {
       return;
     }
 
-    // Check if Helius key looks valid
     if (HELIUS_API_KEY.length < 30) {
       alert("Please add your Helius API key in the code");
       return;
@@ -100,19 +99,15 @@ export default function BcpPaymentPage() {
 
       const transaction = new Transaction();
 
-      // Create user's BCP token account if it doesn't exist
-      try {
-        await getAccount(connection, userAta);
-      } catch {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            publicKey,
-            userAta,
-            publicKey,
-            mint
-          )
-        );
-      }
+      // Create user's ATA if it doesn't exist (idempotent = safer)
+      transaction.add(
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          userAta,
+          publicKey,
+          mint
+        )
+      );
 
       const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
 
