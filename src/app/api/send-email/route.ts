@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const amountUSD = (usdValue * quantity).toFixed(2);
 
     const emailData = {
-      from: "BitcoinPalooza <onboarding@resend.dev>",
+      from: "BitcoinPalooza <noreply@bitcoinpalooza.nyc>",
       to: [email, "hello@bitcoinpalooza.nyc"],
       subject: `BitcoinPalooza Ticket Confirmation - ${ticketName}`,
       html: `
