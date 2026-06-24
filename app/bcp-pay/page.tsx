@@ -29,41 +29,38 @@ export default function BcpPaymentPage() {
   // USD value after 50% discount
   const usdValue = ticketType === 'vip' ? 49.5 : 19.5;
 
-// === FETCH PRICE FROM GECKOTERMINAL ===
-const fetchBcpPrice = async () => {
-  try {
-    const poolAddress = "Hd7XZ57jveHneHwFcfgk6Ch71tGQZW6wr3s1LwvgNgKX";
-    
-    const res = await fetch(
-      `https://api.geckoterminal.com/api/v2/networks/solana/pools/${poolAddress}`
-    );
-    
-    const data = await res.json();
-
-    if (data.data && data.data.attributes) {
-      const price = parseFloat(data.data.attributes.base_token_price_usd);
+  // Fetch real-time BCP price from GeckoTerminal
+  const fetchBcpPrice = async () => {
+    try {
+      const poolAddress = "Hd7XZ57jveHneHwFcfgk6Ch71tGQZW6wr3s1LwvgNgKX";
       
-      if (price > 0) {
-        const needed = (usdValue * quantity) / price;
-        setBcpAmount(needed);
-        console.log("✅ GeckoTerminal Price:", price);
-        return;
+      const res = await fetch(
+        `https://api.geckoterminal.com/api/v2/networks/solana/pools/${poolAddress}`
+      );
+      
+      const data = await res.json();
+
+      if (data.data && data.data.attributes) {
+        const price = parseFloat(data.data.attributes.base_token_price_usd);
+        
+        if (price > 0) {
+          const needed = (usdValue * quantity) / price;
+          setBcpAmount(needed);
+          console.log("✅ GeckoTerminal Price:", price);
+          return;
+        }
       }
+
+      // Fallback
+      setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
+
+    } catch (error) {
+      console.error("Price fetch failed");
+      setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
     }
+  };
 
-    // Fallback
-    setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
-
-  } catch (error) {
-    console.error("Price fetch failed");
-    setBcpAmount(ticketType === 'vip' ? 25000000 * quantity : 15000000 * quantity);
-  }
-};
-
-useEffect(() => {
-  fetchBcpPrice();
-}, [ticketType, quantity]);
-
+  // Fetch price when ticket type or quantity changes
   useEffect(() => {
     fetchBcpPrice();
   }, [ticketType, quantity]);
