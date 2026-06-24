@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config) => {
-    return config;
-  },
+  turbopack: false,
 };
 
 export default nextConfig;
