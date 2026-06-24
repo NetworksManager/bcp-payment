@@ -7,8 +7,7 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { 
   getAssociatedTokenAddress, 
   createTransferInstruction, 
-  createAssociatedTokenAccountIdempotentInstruction, 
-  getAccount 
+  createAssociatedTokenAccountIdempotentInstruction 
 } from '@solana/spl-token';
 
 export default function BcpPaymentPage() {
@@ -73,80 +72,51 @@ export default function BcpPaymentPage() {
     if (params.get('qty')) setQuantity(parseInt(params.get('qty')!) || 1);
   }, []);
 
-const handlePayment = async () => {
-  if (!publicKey || !signTransaction) {
-    alert("Please connect your wallet first");
-    return;
-  }
+  const handlePayment = async () => {
+    if (!publicKey || !signTransaction) {
+      alert("Please connect your wallet first");
+      return;
+    }
 
-  if (HELIUS_API_KEY.length < 30) {
-    alert("Please add your Helius API key in the code");
-    return;
-  }
+    if (HELIUS_API_KEY.length < 30) {
+      alert("Please add your Helius API key in the code");
+      return;
+    }
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    const connection = new Connection(
-      `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
-    );
+    try {
+      const connection = new Connection(
+        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+      );
 
-    const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
-    const merchant = new PublicKey(MERCHANT_WALLET);
+      const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
+      const merchant = new PublicKey(MERCHANT_WALLET);
 
-    const userAta = await getAssociatedTokenAddress(mint, publicKey);
-    const merchantAta = await getAssociatedTokenAddress(mint, merchant);
+      const userAta = await getAssociatedTokenAddress(mint, publicKey);
+      const merchantAta = await getAssociatedTokenAddress(mint, merchant);
 
-    const transaction = new Transaction();
+      const transaction = new Transaction();
 
-    // Create user's ATA if needed
-    transaction.add(
-      createAssociatedTokenAccountIdempotentInstruction(
-        publicKey,
-        userAta,
-        publicKey,
-        mint
-      )
-    );
+      // Create user's ATA if needed
+      transaction.add(
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          userAta,
+          publicKey,
+          mint
+        )
+      );
 
-    // Create merchant's ATA if needed (this is the missing piece)
-    transaction.add(
-      createAssociatedTokenAccountIdempotentInstruction(
-        publicKey,           // payer
-        merchantAta,
-        merchant,            // owner of the ATA
-        mint
-      )
-    );
-
-    const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
-
-    transaction.add(
-      createTransferInstruction(
-        userAta,
-        merchantAta,
-        publicKey,
-        bcpAmountInSmallestUnit
-      )
-    );
-
-    transaction.feePayer = publicKey;
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-
-    const signedTx = await signTransaction(transaction);
-    const signature = await connection.sendRawTransaction(signedTx.serialize());
-
-    console.log("Payment successful:", signature);
-    setSuccess(true);
-
-  } catch (error: any) {
-    console.error(error);
-    alert("Payment failed: " + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      // Create merchant's ATA if needed
+      transaction.add(
+        createAssociatedTokenAccountIdempotentInstruction(
+          publicKey,
+          merchantAta,
+          merchant,
+          mint
+        )
+      );
 
       const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
 
