@@ -72,85 +72,94 @@ export default function BcpPaymentPage() {
         }),
       });
 
-      const result = await res.json();
-      if (result.success) {
-        console.log("✅ Emails sent successfully");
-      } else {
-        console.error("❌ Email sending failed:", result.error);
-      }
-    } catch (err) {
-      console.error("❌ Failed to call email API:", err);
-    }
-  };
-
   const handlePayment = async () => {
-    if (!publicKey || !signTransaction) {
-      alert("Please connect your wallet first");
-      return;
+  if (!publicKey || !signTransaction) {
+    alert("Please connect your wallet first");
+    return;
+  }
+
+  if (HELIUS_API_KEY.length < 30) {
+    alert("Please add your Helius API key in the code");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const connection = new Connection(
+      `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+    );
+
+    const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
+    const merchant = new PublicKey(MERCHANT_WALLET);
+
+    const userAta = await getAssociatedTokenAddress(mint, publicKey);
+    const merchantAta = await getAssociatedTokenAddress(mint, merchant);
+
+    const transaction = new Transaction();
+
+    transaction.add(
+      createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint)
+    );
+    transaction.add(
+      createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint)
+    );
+
+    const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
+
+    transaction.add(
+      createTransferInstruction(userAta, merchantAta, publicKey, bcpAmountInSmallestUnit)
+    );
+
+    transaction.feePayer = publicKey;
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+
+    const signedTx = await signTransaction(transaction);
+    await connection.sendRawTransaction(signedTx.serialize());
+
+    const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
+    const generatedTicket = generateTicketNFT(ticketTier);
+
+    const nftResult = await mintGenerativeTicket(
+      publicKey.toBase58(),
+      generatedTicket
+    );
+
+    console.log("NFT minted:", nftResult.assetAddress);
+
+    await sendEmails(nftResult.assetAddress.toString());
+
+    setNftAddress(nftResult.assetAddress.toString());
+    setSuccess(true);
+
+  } catch (error: any) {
+    console.error("Payment Error:", error);
+
+    let errorMessage = "Payment failed. Please try again.";
+
+    const errorString = error.message?.toLowerCase() || "";
+
+    if (errorString.includes("insufficient lamports") || 
+        errorString.includes("no record of a prior credit")) {
+      errorMessage = 
+        "Your wallet needs a small amount of SOL to create the token account.\n\n" +
+        "Please send at least 0.02 SOL to your connected wallet and try again.";
+    } 
+    else if (errorString.includes("simulation failed")) {
+      errorMessage = 
+        "Transaction simulation failed. This usually means your wallet doesn't have enough SOL " +
+        "to create the BCP token account.\n\nPlease send a small amount of SOL (~0.02) to your wallet.";
+    } 
+    else if (errorString.includes("insufficient funds")) {
+      errorMessage = "You don't have enough BCP tokens to complete this purchase.";
     }
 
-    if (HELIUS_API_KEY.length < 30) {
-      alert("Please add your Helius API key in the code");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const connection = new Connection(
-        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
-      );
-
-      const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
-      const merchant = new PublicKey(MERCHANT_WALLET);
-
-      const userAta = await getAssociatedTokenAddress(mint, publicKey);
-      const merchantAta = await getAssociatedTokenAddress(mint, merchant);
-
-      const transaction = new Transaction();
-
-      transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint)
-      );
-      transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint)
-      );
-
-      const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
-
-      transaction.add(
-        createTransferInstruction(userAta, merchantAta, publicKey, bcpAmountInSmallestUnit)
-      );
-
-      transaction.feePayer = publicKey;
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-
-      const signedTx = await signTransaction(transaction);
-      await connection.sendRawTransaction(signedTx.serialize());
-
-      const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
-      const generatedTicket = generateTicketNFT(ticketTier);
-
-      const nftResult = await mintGenerativeTicket(
-        publicKey.toBase58(),
-        generatedTicket
-      );
-
-      console.log("NFT minted:", nftResult.assetAddress);
-
-      await sendEmails(nftResult.assetAddress.toString());
-
-      setNftAddress(nftResult.assetAddress.toString());
-      setSuccess(true);
-
-    } catch (error: any) {
-      console.error(error);
-      alert("Payment failed: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    alert(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-md mx-auto p-8">
