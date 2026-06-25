@@ -6,8 +6,6 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { generateTicketNFT } from '@/lib/nft/generate';
 import { mintGenerativeTicket } from '@/lib/nft/mint';
-import { generateTicketNFT } from '@/lib/nft/generate';
-import { mintGenerativeTicket } from '@/lib/nft/mint';
 import { 
   getAssociatedTokenAddress, 
   createTransferInstruction, 
