@@ -12,11 +12,11 @@ export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
-  if (!process.env.MINTING_WALLET_SECRET) {
-    throw new Error("MINTING_WALLET_SECRET is not set in environment variables");
+  if (!process.env.MINTING_WALLET_SECRET_V2) {
+    throw new Error("MINTING_WALLET_SECRET_V2 is not set in environment variables");
   }
 
-  const MINTING_WALLET_SECRET = JSON.parse(process.env.MINTING_WALLET_SECRET);
+  const MINTING_WALLET_SECRET = JSON.parse(process.env.MINTING_WALLET_SECRET_V2);
 
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
