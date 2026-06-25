@@ -25,7 +25,7 @@ export default function BcpPaymentPage() {
   const [nftAddress, setNftAddress] = useState('');
 
   const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85"; 
-  const MERCHANT_WALLET = "J9VyqQc3EPo2r7GQeTDQwVGksU8B1u62wcWAaFFAzYG8";
+  const MERCHANT_WALLET = "C3CEgDqxAVqsyFjfcMz8PnELRE2u4AUQdqeypk7Ao2ZU";
 
   const usdValue = ticketType === 'vip' ? 49.5 : 19.5;
 
