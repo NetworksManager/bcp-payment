@@ -5,7 +5,6 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { generateTicketNFT } from '@/lib/nft/generate';
-import { mintGenerativeTicket } from '@/lib/nft/mint';
 import { 
   getAssociatedTokenAddress, 
   createTransferInstruction, 
@@ -129,19 +128,30 @@ export default function BcpPaymentPage() {
       const signedTx = await signTransaction(transaction);
       await connection.sendRawTransaction(signedTx.serialize());
 
+      // === Generate ticket + Mint via API Route ===
       const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
       const generatedTicket = generateTicketNFT(ticketTier);
 
-      const nftResult = await mintGenerativeTicket(
-        publicKey.toBase58(),
-        generatedTicket
-      );
+      const nftResponse = await fetch('/api/mint-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buyerPublicKey: publicKey.toBase58(),
+          ticket: generatedTicket,
+        }),
+      });
+
+      const nftResult = await nftResponse.json();
+
+      if (!nftResponse.ok) {
+        throw new Error(nftResult.error || "Failed to mint NFT");
+      }
 
       console.log("NFT minted:", nftResult.assetAddress);
 
-      await sendEmails(nftResult.assetAddress.toString());
+      await sendEmails(nftResult.assetAddress);
 
-      setNftAddress(nftResult.assetAddress.toString());
+      setNftAddress(nftResult.assetAddress);
       setSuccess(true);
 
     } catch (error: any) {
