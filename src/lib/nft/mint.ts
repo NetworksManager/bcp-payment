@@ -5,7 +5,7 @@ import { fromWeb3JsKeypair, fromWeb3JsPublicKey } from '@metaplex-foundation/umi
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { GeneratedTicket } from './generate';
 
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY || "";
+const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85";
 const COLLECTION_ADDRESS = 'EhtJjyAnswxJV84DhNNwwtvqqaiC7FeYgNJQvnpbcgSx';
 
 export async function mintGenerativeTicket(
