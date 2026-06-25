@@ -12,6 +12,10 @@ export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
+  // === DEBUG LOG ===
+  console.log("DEBUG - Checking MINTING_WALLET_SECRET in mint.ts...");
+  console.log("DEBUG - MINTING_WALLET_SECRET exists:", !!process.env.MINTING_WALLET_SECRET);
+
   if (!process.env.MINTING_WALLET_SECRET) {
     throw new Error("MINTING_WALLET_SECRET is not set in environment variables");
   }
