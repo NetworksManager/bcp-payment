@@ -145,10 +145,10 @@ const handlePayment = async () => {
 
     console.log("NFT minted:", nftResult.assetAddress);
 
-    // === 3. Send Email with NFT Info ===
+    // === 3. Send Email ===
     await sendEmails(nftResult.assetAddress.toString());
 
-    setNftAddress(nftResult.assetAddress.toString()); // Save for success screen
+    setNftAddress(nftResult.assetAddress.toString());
     setSuccess(true);
 
   } catch (error: any) {
@@ -158,6 +158,97 @@ const handlePayment = async () => {
     setLoading(false);
   }
 };
+
+  return (
+    <div className="max-w-md mx-auto p-8">
+      <h1 className="text-3xl font-bold text-center mb-2">Pay with BCP Token</h1>
+      <p className="text-center text-gray-600 mb-8">50% OFF • BitcoinPalooza</p>
+
+      <div className="bg-white border-2 border-orange-500 rounded-2xl p-6 mb-6">
+        <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+        
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Email</span>
+            <span className="font-medium">{email}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Ticket Type</span>
+            <span className="font-medium">{ticketType === 'vip' ? 'VIP Experience' : 'General Admission'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Quantity</span>
+            <span className="font-medium">{quantity}</span>
+          </div>
+        </div>
+
+        <div className="border-t my-4"></div>
+
+        <div className="flex justify-between items-end">
+          <span className="font-semibold text-lg">You Pay</span>
+          <div className="text-right">
+            <div className="text-4xl font-bold text-orange-600">
+              {bcpAmount.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-500">
+              BCP ≈ ${(usdValue * quantity).toFixed(2)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!publicKey ? (
+        <button onClick={() => setVisible(true)} className="w-full bg-black text-white py-4 rounded-xl font-semibold mb-4">
+          Connect Wallet
+        </button>
+      ) : (
+        <div className="mb-6 text-center">
+          <p className="text-sm text-gray-600">Connected</p>
+          <p className="font-mono text-xs break-all bg-gray-100 p-2 rounded">{publicKey.toBase58()}</p>
+        </div>
+      )}
+
+      {publicKey && !success && (
+        <button 
+          onClick={handlePayment} 
+          disabled={loading}
+          className="w-full bg-orange-600 text-white py-4 rounded-xl font-bold text-lg disabled:bg-orange-300"
+        >
+          {loading ? "Processing Payment..." : "Pay with BCP Now"}
+        </button>
+      )}
+
+      {success && (
+        <div className="bg-green-100 border border-green-500 rounded-2xl p-8 text-center">
+          <h3 className="text-2xl font-bold text-green-700 mb-2">✅ Payment Successful!</h3>
+          
+          {nftAddress && (
+            <div className="mb-4 text-sm">
+              <p className="text-green-700 font-medium">Your unique NFT ticket has been minted!</p>
+              <a 
+                href={`https://solscan.io/token/${nftAddress}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline break-all"
+              >
+                View NFT on Solscan →
+              </a>
+            </div>
+          )}
+
+          <p className="text-green-600 mb-4">Confirmation email sent with your NFT details.</p>
+          
+          <button 
+            onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} 
+            className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl"
+          >
+            Return to BitcoinPalooza
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
   return (
     <div className="max-w-md mx-auto p-8">
