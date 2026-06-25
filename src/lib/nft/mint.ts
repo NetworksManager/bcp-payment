@@ -15,7 +15,8 @@ export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
-  const umi = createUmi('https://api.mainnet-beta.solana.com');
+  const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85"; // ← your key
+  const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`); 
 
   // Load minting wallet
   const keypair = Keypair.fromSecretKey(new Uint8Array(MINTING_WALLET_SECRET));
