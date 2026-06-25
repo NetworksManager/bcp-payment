@@ -2,13 +2,23 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { email, ticketType, quantity, bcpAmount, usdValue } = body;
-
-    console.log("📩 Email request received:", { email, ticketType, quantity });
+    const { email, ticketType, quantity, bcpAmount, usdValue, nftAddress } = await request.json();
 
     const ticketName = ticketType === 'vip' ? 'VIP Experience' : 'General Admission';
     const amountUSD = (usdValue * quantity).toFixed(2);
+
+    let nftSection = '';
+    if (nftAddress) {
+      nftSection = `
+        <p style="margin-top: 20px;"><strong>Your Unique NFT Ticket:</strong></p>
+        <p>Your generative NFT ticket has been minted to your wallet.</p>
+        <p>
+          <a href="https://solscan.io/token/${nftAddress}" target="_blank" style="color: #FF6B00; text-decoration: underline;">
+            View your NFT on Solscan →
+          </a>
+        </p>
+      `;
+    }
 
     const emailData = {
       from: "BitcoinPalooza <noreply@bitcoinpalooza.nyc>",
@@ -23,7 +33,10 @@ export async function POST(request: Request) {
           <li><strong>Quantity:</strong> ${quantity}</li>
           <li><strong>Amount Paid:</strong> ${bcpAmount} BCP (≈ $${amountUSD})</li>
         </ul>
-        <p>Your ticket(s) will be sent to this email shortly.</p>
+
+        ${nftSection}
+
+        <p style="margin-top: 30px;">Your ticket(s) will be sent to this email shortly.</p>
         <p>— BitcoinPalooza Team</p>
       `,
     };
@@ -40,22 +53,12 @@ export async function POST(request: Request) {
     const result = await res.json();
 
     if (!res.ok) {
-      console.error("❌ Resend API returned error:", result);
-      return NextResponse.json({ 
-        success: false, 
-        error: result,
-        message: "Resend API error" 
-      }, { status: 500 });
+      return NextResponse.json({ success: false, error: result }, { status: 500 });
     }
 
-    console.log("✅ Email sent successfully via Resend");
     return NextResponse.json({ success: true, result });
 
-  } catch (error: any) {
-    console.error("❌ API Route crashed:", error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message || String(error) 
-    }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }

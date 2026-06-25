@@ -15,7 +15,7 @@ import {
 export default function BcpPaymentPage() {
   const { publicKey, signTransaction } = useWallet();
   const { setVisible } = useWalletModal();
-
+  const [nftAddress, setNftAddress] = useState('');
   const [email, setEmail] = useState('');
   const [ticketType, setTicketType] = useState('general');
   const [quantity, setQuantity] = useState(1);
@@ -60,31 +60,32 @@ export default function BcpPaymentPage() {
   }, []);
 
   // ==================== SEND EMAILS ====================
-  const sendEmails = async () => {
-    try {
-      const res = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          ticketType,
-          quantity,
-          bcpAmount: bcpAmount.toFixed(2),
-          usdValue,
-        }),
-      });
+const sendEmails = async (nftAddress?: string) => {
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        ticketType,
+        quantity,
+        bcpAmount: bcpAmount.toFixed(2),
+        usdValue,
+        nftAddress, // ← Pass NFT address
+      }),
+    });
 
-      const result = await res.json();
-      
-      if (result.success) {
-        console.log("✅ Emails sent successfully");
-      } else {
-        console.error("❌ Email sending failed:", result.error);
-      }
-    } catch (err) {
-      console.error("❌ Failed to call email API:", err);
+    const result = await res.json();
+    
+    if (result.success) {
+      console.log("✅ Emails sent successfully");
+    } else {
+      console.error("❌ Email sending failed:", result.error);
     }
-  };
+  } catch (err) {
+    console.error("❌ Failed to call email API:", err);
+  }
+};
 
 const handlePayment = async () => {
   if (!publicKey || !signTransaction) {
@@ -100,7 +101,7 @@ const handlePayment = async () => {
   setLoading(true);
 
   try {
-    // === 1. Process the BCP payment (your existing code) ===
+    // === 1. Process BCP Payment ===
     const connection = new Connection(
       `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
     );
@@ -133,11 +134,9 @@ const handlePayment = async () => {
     const signedTx = await signTransaction(transaction);
     await connection.sendRawTransaction(signedTx.serialize());
 
-    // === 2. Generate and Mint NFT Ticket ===
+    // === 2. Generate & Mint NFT ===
     const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
     const generatedTicket = generateTicketNFT(ticketTier);
-
-    console.log("Generated NFT Ticket:", generatedTicket);
 
     const nftResult = await mintGenerativeTicket(
       publicKey.toBase58(),
@@ -146,9 +145,10 @@ const handlePayment = async () => {
 
     console.log("NFT minted:", nftResult.assetAddress);
 
-    // === 3. Send confirmation email (existing) ===
-    await sendEmails();
+    // === 3. Send Email with NFT Info ===
+    await sendEmails(nftResult.assetAddress.toString());
 
+    setNftAddress(nftResult.assetAddress.toString()); // Save for success screen
     setSuccess(true);
 
   } catch (error: any) {
@@ -218,15 +218,32 @@ const handlePayment = async () => {
         </button>
       )}
 
-      {success && (
-        <div className="bg-green-100 border border-green-500 rounded-2xl p-8 text-center">
-          <h3 className="text-2xl font-bold text-green-700 mb-2">✅ Payment Successful!</h3>
-          <p className="text-green-600 mb-4">Confirmation emails have been sent.</p>
-          <button onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl">
-            Return to BitcoinPalooza
-          </button>
-        </div>
-      )}
-    </div>
-  );
+{success && (
+  <div className="bg-green-100 border border-green-500 rounded-2xl p-8 text-center">
+    <h3 className="text-2xl font-bold text-green-700 mb-2">✅ Payment Successful!</h3>
+    
+    {nftAddress && (
+      <div className="mb-4 text-sm">
+        <p className="text-green-700 font-medium">Your unique NFT ticket has been minted!</p>
+        <a 
+          href={`https://solscan.io/token/${nftAddress}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline break-all"
+        >
+          View NFT on Solscan →
+        </a>
+      </div>
+    )}
+
+    <p className="text-green-600 mb-4">Confirmation email sent with your NFT details.</p>
+    
+    <button 
+      onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} 
+      className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl"
+    >
+      Return to BitcoinPalooza
+    </button>
+  </div>
+)}
 }
