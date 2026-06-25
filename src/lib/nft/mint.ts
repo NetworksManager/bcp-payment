@@ -5,15 +5,19 @@ import { fromWeb3JsKeypair, fromWeb3JsPublicKey } from '@metaplex-foundation/umi
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { GeneratedTicket } from './generate';
 
-// === CONFIGURATION (Now using Environment Variables) ===
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;
-const MINTING_WALLET_SECRET = JSON.parse(process.env.MINTING_WALLET_SECRET!);
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY || "";
 const COLLECTION_ADDRESS = 'EhtJjyAnswxJV84DhNNwwtvqqaiC7FeYgNJQvnpbcgSx';
 
 export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
+  if (!process.env.MINTING_WALLET_SECRET) {
+    throw new Error("MINTING_WALLET_SECRET is not set in environment variables");
+  }
+
+  const MINTING_WALLET_SECRET = JSON.parse(process.env.MINTING_WALLET_SECRET);
+
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
   const keypair = Keypair.fromSecretKey(new Uint8Array(MINTING_WALLET_SECRET));
