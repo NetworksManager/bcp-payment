@@ -4,7 +4,7 @@ import { createCollection } from '@metaplex-foundation/mpl-core';
 import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters';
 import { Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-const MINTING_WALLET_SECRET = [secret key removed after minting];
+// const MINTING_WALLET_SECRET = [...];
 
 async function main() {
   const umi = createUmi('https://api.mainnet-beta.solana.com');
