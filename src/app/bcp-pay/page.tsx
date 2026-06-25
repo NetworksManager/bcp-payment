@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { generateTicketNFT } from '@/lib/nft/generate';
+import { mintGenerativeTicket } from '@/lib/nft/mint';
+import { generateTicketNFT } from '@/lib/nft/generate';
+import { mintGenerativeTicket } from '@/lib/nft/mint';
 import { 
   getAssociatedTokenAddress, 
   createTransferInstruction, 
@@ -84,64 +88,78 @@ export default function BcpPaymentPage() {
     }
   };
 
-  const handlePayment = async () => {
-    if (!publicKey || !signTransaction) {
-      alert("Please connect your wallet first");
-      return;
-    }
+const handlePayment = async () => {
+  if (!publicKey || !signTransaction) {
+    alert("Please connect your wallet first");
+    return;
+  }
 
-    if (HELIUS_API_KEY.length < 30) {
-      alert("Please add your Helius API key in the code");
-      return;
-    }
+  if (HELIUS_API_KEY.length < 30) {
+    alert("Please add your Helius API key in the code");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const connection = new Connection(
-        `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
-      );
+  try {
+    // === 1. Process the BCP payment (your existing code) ===
+    const connection = new Connection(
+      `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+    );
 
-      const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
-      const merchant = new PublicKey(MERCHANT_WALLET);
+    const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
+    const merchant = new PublicKey(MERCHANT_WALLET);
 
-      const userAta = await getAssociatedTokenAddress(mint, publicKey);
-      const merchantAta = await getAssociatedTokenAddress(mint, merchant);
+    const userAta = await getAssociatedTokenAddress(mint, publicKey);
+    const merchantAta = await getAssociatedTokenAddress(mint, merchant);
 
-      const transaction = new Transaction();
+    const transaction = new Transaction();
 
-      transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint)
-      );
-      transaction.add(
-        createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint)
-      );
+    transaction.add(
+      createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint)
+    );
+    transaction.add(
+      createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint)
+    );
 
-      const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
+    const bcpAmountInSmallestUnit = Math.floor(bcpAmount * 1_000_000);
 
-      transaction.add(
-        createTransferInstruction(userAta, merchantAta, publicKey, bcpAmountInSmallestUnit)
-      );
+    transaction.add(
+      createTransferInstruction(userAta, merchantAta, publicKey, bcpAmountInSmallestUnit)
+    );
 
-      transaction.feePayer = publicKey;
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+    transaction.feePayer = publicKey;
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
 
-      const signedTx = await signTransaction(transaction);
-      await connection.sendRawTransaction(signedTx.serialize());
+    const signedTx = await signTransaction(transaction);
+    await connection.sendRawTransaction(signedTx.serialize());
 
-      // Send emails after successful payment
-      await sendEmails();
+    // === 2. Generate and Mint NFT Ticket ===
+    const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
+    const generatedTicket = generateTicketNFT(ticketTier);
 
-      setSuccess(true);
+    console.log("Generated NFT Ticket:", generatedTicket);
 
-    } catch (error: any) {
-      console.error(error);
-      alert("Payment failed: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const nftResult = await mintGenerativeTicket(
+      publicKey.toBase58(),
+      generatedTicket
+    );
+
+    console.log("NFT minted:", nftResult.assetAddress);
+
+    // === 3. Send confirmation email (existing) ===
+    await sendEmails();
+
+    setSuccess(true);
+
+  } catch (error: any) {
+    console.error(error);
+    alert("Payment failed: " + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-md mx-auto p-8">
