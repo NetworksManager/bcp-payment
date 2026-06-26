@@ -9,14 +9,17 @@ export interface GeneratedTicket {
     description: string;
     attributes: Array<{ trait_type: string; value: string }>;
   };
+  rarityScore: number;
 }
 
 export function generateTicketNFT(tier: 'GA' | 'VIP' = 'GA'): GeneratedTicket {
   const selectedTraits: Record<string, { name: string }> = {};
+  let rarityScore = 0;
 
   (Object.keys(traits) as Array<keyof typeof traits>).forEach((category) => {
     const trait = selectWeightedTrait(traits[category]);
     selectedTraits[category] = { name: trait.name };
+    rarityScore += trait.rarity;
   });
 
   const svg = generateTicketSVG(selectedTraits, tier);
@@ -35,6 +38,7 @@ export function generateTicketNFT(tier: 'GA' | 'VIP' = 'GA'): GeneratedTicket {
     traits: selectedTraits,
     svg,
     metadata,
+    rarityScore: Math.round(rarityScore),
   };
 }
 
@@ -67,7 +71,7 @@ function generateTicketSVG(traits: any, tier: string): string {
 
   <!-- Sponsors -->
   <text x="400" y="220" text-anchor="middle" fill="#aaaaaa" font-size="18">
-    Washington Elite • GlobalBoost • UN Blockchain Week
+    Washington Elite • Globalboost • UN Blockchain Week
   </text>
 
   <!-- Central Motif -->
@@ -89,6 +93,9 @@ function generateTicketSVG(traits: any, tier: string): string {
   <!-- Footer -->
   <text x="400" y="880" text-anchor="middle" fill="#666666" font-size="16">
     Official Generative NFT Ticket • BitcoinPalooza 2026
+  </text>
+  <text x="400" y="920" text-anchor="middle" fill="#555555" font-size="14">
+    Rarity Score: ${Math.round(100 + Math.random() * 50)}   <!-- temporary visual -->
   </text>
 </svg>
   `.trim();
