@@ -12,6 +12,8 @@ export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
+  console.log("DEBUG - Starting NFT mint...");
+
   if (!process.env.MINTING_WALLET_SECRET_V2) {
     throw new Error("MINTING_WALLET_SECRET_V2 is not set in environment variables");
   }
@@ -21,7 +23,8 @@ export async function mintGenerativeTicket(
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
   const keypair = Keypair.fromSecretKey(new Uint8Array(MINTING_WALLET_SECRET));
-  const signer = createSignerFromKeypair(umi, fromWeb3JsKeypair(keypair));
+  const umiKeypair = fromWeb3JsKeypair(keypair);
+  const signer = createSignerFromKeypair(umi, umiKeypair);
   umi.use(keypairIdentity(signer));
 
   const collection = await fetchCollection(umi, fromWeb3JsPublicKey(new PublicKey(COLLECTION_ADDRESS)));
@@ -47,10 +50,10 @@ export async function mintGenerativeTicket(
   }).sendAndConfirm(umi);
 
   console.log('✅ NFT minted successfully!');
-  console.log('Asset Address:', assetSigner.publicKey);
+  console.log('Asset Address:', assetSigner.publicKey.toString());
 
   return {
-    assetAddress: assetSigner.publicKey,
+    assetAddress: assetSigner.publicKey.toString(),
     metadata,
   };
 }
