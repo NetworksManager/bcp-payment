@@ -74,6 +74,8 @@ export default function BcpPaymentPage() {
       const result = await res.json();
       if (result.success) {
         console.log("✅ Emails sent successfully");
+      } else {
+        console.error("❌ Email sending failed:", result.error);
       }
     } catch (err) {
       console.error("❌ Failed to call email API:", err);
@@ -83,6 +85,11 @@ export default function BcpPaymentPage() {
   const handlePayment = async () => {
     if (!publicKey || !signTransaction) {
       alert("Please connect your wallet first");
+      return;
+    }
+
+    if (HELIUS_API_KEY.length < 30) {
+      alert("Please add your Helius API key in the code");
       return;
     }
 
@@ -121,37 +128,55 @@ export default function BcpPaymentPage() {
       const signedTx = await signTransaction(transaction);
       await connection.sendRawTransaction(signedTx.serialize());
 
-      console.log("✅ BCP Payment successful");
+      // === Generate ticket + Mint via API Route ===
+      const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
+      const generatedTicket = generateTicketNFT(ticketTier);
 
-      // Try to mint NFT (non-blocking)
-      try {
-        const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
-        const generatedTicket = generateTicketNFT(ticketTier);
+      const nftResponse = await fetch('/api/mint-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          buyerPublicKey: publicKey.toBase58(),
+          ticket: generatedTicket,
+        }),
+      });
 
-        const nftResponse = await fetch('/api/mint-ticket', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            buyerPublicKey: publicKey.toBase58(),
-            ticket: generatedTicket,
-          }),
-        });
+      const nftResult = await nftResponse.json();
 
-        if (nftResponse.ok) {
-          const nftResult = await nftResponse.json();
-          setNftAddress(nftResult.assetAddress);
-          console.log("NFT minted:", nftResult.assetAddress);
-        }
-      } catch (nftError) {
-        console.log("NFT minting failed (payment still succeeded):", nftError);
+      if (!nftResponse.ok) {
+        throw new Error(nftResult.error || "Failed to mint NFT");
       }
 
-      await sendEmails(nftAddress || undefined);
+      console.log("NFT minted:", nftResult.assetAddress);
+
+      await sendEmails(nftResult.assetAddress);
+
+      setNftAddress(nftResult.assetAddress);
       setSuccess(true);
 
     } catch (error: any) {
       console.error("Payment Error:", error);
-      alert("Payment failed. Please try again.");
+
+      let errorMessage = "Payment failed. Please try again.";
+
+      const errorString = error.message?.toLowerCase() || "";
+
+      if (errorString.includes("insufficient lamports") || 
+          errorString.includes("no record of a prior credit")) {
+        errorMessage = 
+          "Your wallet needs a small amount of SOL to create the token account.\n\n" +
+          "Please send at least 0.02 SOL to your connected wallet and try again.";
+      } 
+      else if (errorString.includes("simulation failed")) {
+        errorMessage = 
+          "Transaction simulation failed. This usually means your wallet doesn't have enough SOL " +
+          "to create the BCP token account.\n\nPlease send a small amount of SOL (~0.02) to your wallet.";
+      } 
+      else if (errorString.includes("insufficient funds")) {
+        errorMessage = "You don't have enough BCP tokens to complete this purchase.";
+      }
+
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -223,15 +248,23 @@ export default function BcpPaymentPage() {
           {nftAddress && (
             <div className="mb-4 text-sm">
               <p className="text-green-700 font-medium">Your unique NFT ticket has been minted!</p>
-              <a href={`https://solscan.io/token/${nftAddress}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+              <a 
+                href={`https://solscan.io/token/${nftAddress}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline break-all"
+              >
                 View NFT on Solscan →
               </a>
             </div>
           )}
 
-          <p className="text-green-600 mb-4">Confirmation email sent.</p>
+          <p className="text-green-600 mb-4">Confirmation email sent with your NFT details.</p>
           
-          <button onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl">
+          <button 
+            onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} 
+            className="mt-2 bg-green-700 text-white px-6 py-3 rounded-xl"
+          >
             Return to BitcoinPalooza
           </button>
         </div>
