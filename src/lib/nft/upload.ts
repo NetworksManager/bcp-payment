@@ -26,7 +26,7 @@ export async function uploadToArweave(
   try {
     // Fund if needed
     const balance = await irys.getLoadedBalance();
-    if (balance.toNumber() < 100000) { // ~0.0001 SOL
+    if (balance.toNumber() < 100000) {
       console.log("Funding Irys...");
       await irys.fund(irys.utils.toAtomic(0.05));
     }
@@ -43,8 +43,13 @@ export async function uploadToArweave(
     console.log("Upload successful:", url);
     return url;
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Arweave upload failed:", error);
-    throw new Error("Failed to upload to Arweave: " + error.message);
+    
+    const message = error instanceof Error 
+      ? error.message 
+      : String(error);
+      
+    throw new Error("Failed to upload to Arweave: " + message);
   }
 }
