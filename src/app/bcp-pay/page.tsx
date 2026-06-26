@@ -33,7 +33,6 @@ export default function BcpPaymentPage() {
       const poolAddress = "Hd7XZ57jveHneHwFcfgk6Ch71tGQZW6wr3s1LwvgNgKX";
       const res = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${poolAddress}`);
       const data = await res.json();
-
       if (data.data?.attributes?.base_token_price_usd) {
         const price = parseFloat(data.data.attributes.base_token_price_usd);
         if (price > 0) {
@@ -59,41 +58,77 @@ export default function BcpPaymentPage() {
       await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, ticketType, quantity, bcpAmount: bcpAmount.toFixed(2), usdValue, nftAddress: nftAddr }),
+        body: JSON.stringify({
+          email,
+          ticketType,
+          quantity,
+          bcpAmount: bcpAmount.toFixed(2),
+          usdValue,
+          nftAddress: nftAddr || "NFT minting skipped",
+        }),
       });
+      console.log("✅ Emails sent");
     } catch (err) {
       console.error("Email failed", err);
     }
   };
 
   const handlePayment = async () => {
-    if (!publicKey || !signTransaction) return alert("Please connect wallet");
+    if (!publicKey || !signTransaction) {
+      alert("Please connect your wallet first");
+      return;
+    }
 
     setLoading(true);
+
     try {
-      // ... (BCP transfer code stays the same - I'll keep it short here)
       const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
-      // ... token transfer logic ...
 
-      // Mint via API Route
-      const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
-      const generatedTicket = generateTicketNFT(ticketTier);
+      const mint = new PublicKey("Ame1dzZcompavH8xZW98C6igpxUCd6GfDrGrsnTpump");
+      const merchant = new PublicKey(MERCHANT_WALLET);
 
-      const nftRes = await fetch('/api/mint-ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyerPublicKey: publicKey.toBase58(), ticket: generatedTicket }),
-      });
+      const userAta = await getAssociatedTokenAddress(mint, publicKey);
+      const merchantAta = await getAssociatedTokenAddress(mint, merchant);
 
-      const nftData = await nftRes.json();
-      if (!nftRes.ok) throw new Error(nftData.error);
+      const transaction = new Transaction()
+        .add(createAssociatedTokenAccountIdempotentInstruction(publicKey, userAta, publicKey, mint))
+        .add(createAssociatedTokenAccountIdempotentInstruction(publicKey, merchantAta, merchant, mint))
+        .add(createTransferInstruction(userAta, merchantAta, publicKey, Math.floor(bcpAmount * 1_000_000)));
 
-      await sendEmails(nftData.assetAddress);
-      setNftAddress(nftData.assetAddress);
+      transaction.feePayer = publicKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      const signedTx = await signTransaction(transaction);
+      await connection.sendRawTransaction(signedTx.serialize());
+
+      // Try to mint NFT (but don't block success)
+      let mintedNft = null;
+      try {
+        const ticketTier = ticketType === 'vip' ? 'VIP' : 'GA';
+        const generatedTicket = generateTicketNFT(ticketTier);
+
+        const nftRes = await fetch('/api/mint-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buyerPublicKey: publicKey.toBase58(), ticket: generatedTicket }),
+        });
+
+        const nftData = await nftRes.json();
+        if (nftRes.ok && nftData.assetAddress) {
+          mintedNft = nftData.assetAddress;
+          setNftAddress(mintedNft);
+        }
+      } catch (nftErr) {
+        console.log("NFT mint failed (continuing anyway):", nftErr);
+      }
+
+      await sendEmails(mintedNft);
       setSuccess(true);
+
     } catch (error: any) {
-      console.error(error);
-      alert("Payment failed: " + (error.message || "Unknown error"));
+      console.error("Payment Error:", error);
+      alert("Payment failed. Please try again or add a small amount of SOL (~0.02) to your wallet.");
     } finally {
       setLoading(false);
     }
@@ -104,22 +139,68 @@ export default function BcpPaymentPage() {
       <h1 className="text-3xl font-bold text-center mb-2">Pay with BCP Token</h1>
       <p className="text-center text-gray-600 mb-8">50% OFF • BitcoinPalooza</p>
 
-      {/* Order Summary + Pay Button + Success UI - same as before */}
-      {/* (Paste your full return JSX here if you want, but this minimal version should show something) */}
-
-      {success ? (
-        <div className="text-center">
-          <h3>✅ Payment Successful!</h3>
-          <button onClick={() => window.location.href = "https://bitcoinpalooza.nyc"}>Return Home</button>
+      <div className="bg-white border-2 border-orange-500 rounded-2xl p-6 mb-6">
+        <h2 className="font-semibold text-lg mb-4">Order Summary</h2>
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between"><span className="text-gray-600">Email</span><span>{email}</span></div>
+          <div className="flex justify-between"><span className="text-gray-600">Ticket</span><span>{ticketType === 'vip' ? 'VIP Experience' : 'General Admission'}</span></div>
+          <div className="flex justify-between"><span className="text-gray-600">Quantity</span><span>{quantity}</span></div>
         </div>
+
+        <div className="border-t my-4"></div>
+
+        <div className="flex justify-between items-end">
+          <span className="font-semibold text-lg">You Pay</span>
+          <div className="text-right">
+            <div className="text-4xl font-bold text-orange-600">{bcpAmount.toFixed(2)}</div>
+            <div className="text-sm text-gray-500">BCP ≈ ${(usdValue * quantity).toFixed(2)}</div>
+          </div>
+        </div>
+      </div>
+
+      {!publicKey ? (
+        <button onClick={() => setVisible(true)} className="w-full bg-black text-white py-4 rounded-xl font-semibold mb-4">
+          Connect Wallet
+        </button>
       ) : (
+        <div className="mb-6 text-center">
+          <p className="text-sm text-gray-600">Connected</p>
+          <p className="font-mono text-xs break-all bg-gray-100 p-2 rounded">{publicKey.toBase58()}</p>
+        </div>
+      )}
+
+      {publicKey && !success && (
         <button 
           onClick={handlePayment} 
           disabled={loading}
-          className="w-full bg-orange-600 text-white py-4 rounded-xl font-bold"
+          className="w-full bg-orange-600 text-white py-4 rounded-xl font-bold text-lg disabled:bg-orange-300"
         >
-          {loading ? "Processing..." : "Pay with BCP Now"}
+          {loading ? "Processing Payment..." : "Pay with BCP Now"}
         </button>
+      )}
+
+      {success && (
+        <div className="bg-green-100 border border-green-500 rounded-2xl p-8 text-center">
+          <h3 className="text-2xl font-bold text-green-700 mb-2">✅ Payment Successful!</h3>
+          
+          {nftAddress && (
+            <div className="mb-4 text-sm">
+              <p>Your NFT ticket has been minted!</p>
+              <a href={`https://solscan.io/token/${nftAddress}`} target="_blank" className="text-blue-600 hover:underline">
+                View NFT →
+              </a>
+            </div>
+          )}
+
+          <p className="text-green-600 mb-4">Confirmation email has been sent.</p>
+          
+          <button 
+            onClick={() => window.location.href = "https://bitcoinpalooza.nyc"} 
+            className="mt-4 bg-green-700 text-white px-8 py-3 rounded-xl"
+          >
+            Return to BitcoinPalooza
+          </button>
+        </div>
       )}
     </div>
   );
