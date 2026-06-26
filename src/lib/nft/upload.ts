@@ -29,8 +29,13 @@ export async function uploadToArweave(
     try {
       console.log(`Uploading to Arweave (attempt ${attempt}/${maxRetries})...`);
 
-      // Fund with a good amount
-      await irys.fund(irys.utils.toAtomic(0.2)); // Fund 0.2 SOL
+      // ✅ Check balance first before funding
+      const balance = await irys.getLoadedBalance();
+      
+      if (balance.toNumber() < 50000) { // Only fund if balance is low
+        console.log("Funding Irys with 0.05 SOL...");
+        await irys.fund(irys.utils.toAtomic(0.05));
+      }
 
       const receipt = await irys.upload(data, {
         tags: [
@@ -51,8 +56,8 @@ export async function uploadToArweave(
         throw new Error("Failed to upload to Arweave after multiple attempts: " + message);
       }
 
-      // Wait longer between retries
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 4000));
     }
   }
 
