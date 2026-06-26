@@ -1,4 +1,4 @@
-import { Uploader } from '@irys/sdk';
+import Irys from '@irys/sdk';
 
 export async function uploadToArweave(
   data: string | Buffer,
@@ -12,7 +12,7 @@ export async function uploadToArweave(
     throw new Error("MINTING_WALLET_SECRET_V2 is not set");
   }
 
-  const irys = new Uploader({
+  const irys = new Irys({
     network: "mainnet",
     token: "solana",
     key: JSON.parse(privateKey),
