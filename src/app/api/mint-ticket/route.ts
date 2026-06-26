@@ -4,8 +4,7 @@ import { GeneratedTicket } from '@/lib/nft/generate';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { buyerPublicKey, ticket } = body;
+    const { buyerPublicKey, ticket } = await request.json();
 
     if (!buyerPublicKey || !ticket) {
       return NextResponse.json(
@@ -14,14 +13,12 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("🔄 Minting NFT via API route for:", buyerPublicKey);
+    console.log("🔄 Minting generative NFT ticket for:", buyerPublicKey);
 
     const result = await mintGenerativeTicket(
       buyerPublicKey,
       ticket as GeneratedTicket
     );
-
-    console.log("✅ NFT minted successfully:", result.assetAddress);
 
     return NextResponse.json({
       success: true,
@@ -30,7 +27,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("❌ Mint API Error:", error);
-
     return NextResponse.json(
       {
         success: false,
