@@ -23,6 +23,11 @@ export async function uploadToArweave(
     },
   });
 
+  // Explicitly fund the uploader (this usually fixes the 402 error)
+  console.log("Funding Irys uploader...");
+  await irys.fund(irys.utils.toAtomic(0.02)); // Fund ~0.02 SOL
+
+  console.log("Uploading to Arweave...");
   const receipt = await irys.upload(data, {
     tags: [
       { name: "Content-Type", value: contentType },
