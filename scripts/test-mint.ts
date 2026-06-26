@@ -1,4 +1,4 @@
-import { generateTicketNFT, getTicketSummary } from '../src/lib/nft/generate';
+import { generateTicketNFT } from '../src/lib/nft/generate';
 import { mintGenerativeTicket } from '../src/lib/nft/mint';
 
 // === TEST CONFIG ===
