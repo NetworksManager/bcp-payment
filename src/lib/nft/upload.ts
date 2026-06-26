@@ -23,27 +23,38 @@ export async function uploadToArweave(
     },
   });
 
-  try {
-    // Fund the uploader
-    console.log("Funding Irys...");
-    await irys.fund(irys.utils.toAtomic(0.1)); // Fund 0.1 SOL
+  const maxRetries = 4;
 
-    console.log("Uploading to Arweave via Irys...");
-    const receipt = await irys.upload(data, {
-      tags: [
-        { name: "Content-Type", value: contentType },
-        ...tags,
-      ],
-    });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Uploading to Arweave (attempt ${attempt}/${maxRetries})...`);
 
-    // Use Irys gateway instead of arweave.net (much more reliable)
-    const url = `https://gateway.irys.xyz/${receipt.id}`;
-    console.log("Upload successful:", url);
-    return url;
+      // Fund with a good amount
+      await irys.fund(irys.utils.toAtomic(0.2)); // Fund 0.2 SOL
 
-  } catch (error: unknown) {
-    console.error("Arweave upload failed:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error("Failed to upload to Arweave: " + message);
+      const receipt = await irys.upload(data, {
+        tags: [
+          { name: "Content-Type", value: contentType },
+          ...tags,
+        ],
+      });
+
+      const url = `https://gateway.irys.xyz/${receipt.id}`;
+      console.log("✅ Upload successful:", url);
+      return url;
+
+    } catch (error: unknown) {
+      console.error(`Attempt ${attempt} failed:`, error);
+
+      if (attempt === maxRetries) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error("Failed to upload to Arweave after multiple attempts: " + message);
+      }
+
+      // Wait longer between retries
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
+
+  throw new Error("Failed to upload to Arweave");
 }
