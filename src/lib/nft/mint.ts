@@ -2,7 +2,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { createSignerFromKeypair, generateSigner, keypairIdentity } from '@metaplex-foundation/umi';
 import { create, fetchCollection } from '@metaplex-foundation/mpl-core';
 import { fromWeb3JsKeypair, fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters';
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { GeneratedTicket } from './generate';
 
 const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85";
@@ -21,8 +21,7 @@ export async function mintGenerativeTicket(
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
   const keypair = Keypair.fromSecretKey(new Uint8Array(MINTING_WALLET_SECRET));
-  const umiKeypair = fromWeb3JsKeypair(keypair);
-  const signer = createSignerFromKeypair(umi, umiKeypair);
+  const signer = createSignerFromKeypair(umi, fromWeb3JsKeypair(keypair));
   umi.use(keypairIdentity(signer));
 
   const collection = await fetchCollection(umi, fromWeb3JsPublicKey(new PublicKey(COLLECTION_ADDRESS)));
