@@ -13,22 +13,24 @@ export async function mintGenerativeTicket(
   buyerPublicKey: string,
   ticket: GeneratedTicket
 ) {
+  console.log("=== [MINT] Starting mintGenerativeTicket ===");
+  console.log("Buyer:", buyerPublicKey);
+  console.log("Ticket Tier:", ticket.tier);
+
   if (!process.env.MINTING_WALLET_SECRET_V2) {
-    throw new Error("MINTING_WALLET_SECRET_V2 is not set in environment variables");
+    throw new Error("MINTING_WALLET_SECRET_V2 is not set");
   }
 
-  console.log("Uploading SVG and metadata to Arweave...");
-
-  // 1. Upload SVG image
+  // Upload Image
+  console.log("[MINT] Uploading SVG image...");
   const imageUrl = await uploadToArweave(
     ticket.svg,
     "image/svg+xml",
     [{ name: "App-Name", value: "BitcoinPalooza" }]
   );
+  console.log("✅ [MINT] Image uploaded:", imageUrl);
 
-  console.log("Image uploaded:", imageUrl);
-
-  // 2. Upload metadata JSON
+  // Upload Metadata
   const metadata = {
     ...ticket.metadata,
     image: imageUrl,
@@ -37,15 +39,15 @@ export async function mintGenerativeTicket(
     },
   };
 
+  console.log("[MINT] Uploading metadata...");
   const metadataUrl = await uploadToArweave(
     JSON.stringify(metadata),
     "application/json",
     [{ name: "App-Name", value: "BitcoinPalooza" }]
   );
+  console.log("✅ [MINT] Metadata uploaded:", metadataUrl);
 
-  console.log("Metadata uploaded:", metadataUrl);
-
-  // 3. Mint the NFT with real metadata
+  // Mint NFT
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
   const keypair = Keypair.fromSecretKey(
@@ -58,6 +60,7 @@ export async function mintGenerativeTicket(
   const collection = await fetchCollection(umi, fromWeb3JsPublicKey(new PublicKey(COLLECTION_ADDRESS)));
   const assetSigner = generateSigner(umi);
 
+  console.log("[MINT] Minting NFT on-chain...");
   await create(umi, {
     asset: assetSigner,
     collection,
@@ -66,7 +69,7 @@ export async function mintGenerativeTicket(
     uri: metadataUrl,
   }).sendAndConfirm(umi);
 
-  console.log("✅ NFT minted successfully!");
+  console.log("✅ [MINT] NFT minted successfully!");
   console.log("Asset Address:", assetSigner.publicKey.toString());
 
   return {
