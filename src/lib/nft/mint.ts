@@ -21,7 +21,7 @@ export async function mintGenerativeTicket(
     throw new Error("MINTING_WALLET_SECRET_V2 is not set");
   }
 
-  // Upload Image
+  // 1. Upload SVG Image
   console.log("[MINT] Uploading SVG image...");
   const imageUrl = await uploadToArweave(
     ticket.svg,
@@ -30,7 +30,7 @@ export async function mintGenerativeTicket(
   );
   console.log("✅ [MINT] Image uploaded:", imageUrl);
 
-  // Upload Metadata
+  // 2. Build and Upload Metadata
   const metadata = {
     ...ticket.metadata,
     image: imageUrl,
@@ -47,7 +47,7 @@ export async function mintGenerativeTicket(
   );
   console.log("✅ [MINT] Metadata uploaded:", metadataUrl);
 
-  // Mint NFT
+  // 3. Mint the NFT
   const umi = createUmi(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
 
   const keypair = Keypair.fromSecretKey(

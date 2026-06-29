@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       assetAddress: result.assetAddress,
+      metadataUrl: result.metadataUrl,
+      imageUrl: result.imageUrl,
     });
 
   } catch (error: any) {

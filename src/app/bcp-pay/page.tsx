@@ -22,6 +22,7 @@ export default function BcpPaymentPage() {
   const [success, setSuccess] = useState(false);
   const [bcpAmount, setBcpAmount] = useState(0);
   const [nftAddress, setNftAddress] = useState('');
+  const [metadataUrl, setMetadataUrl] = useState('');
 
   const HELIUS_API_KEY = "74182e68-a184-40a0-83fb-ee93b634cf85";
   const MERCHANT_WALLET = "C3CEgDqxAVqsyFjfcMz8PnELRE2u4AUQdqeypk7Ao2ZU";
@@ -53,7 +54,7 @@ export default function BcpPaymentPage() {
     if (params.get('qty')) setQuantity(parseInt(params.get('qty')!) || 1);
   }, []);
 
-  const sendEmails = async (nftAddr?: string) => {
+  const sendEmails = async (nftAddr?: string, metaUrl?: string) => {
     try {
       await fetch("/api/send-email", {
         method: "POST",
@@ -65,6 +66,7 @@ export default function BcpPaymentPage() {
           bcpAmount: bcpAmount.toFixed(2),
           usdValue,
           nftAddress: nftAddr || "",
+          metadataUrl: metaUrl || "",
         }),
       });
     } catch (err) {
@@ -102,6 +104,8 @@ export default function BcpPaymentPage() {
 
       // Mint NFT
       let mintedNftAddress = '';
+      let mintedMetadataUrl = '';
+
       try {
         const tier = ticketType === 'vip' ? 'VIP' : 'GA';
         const generatedTicket = generateTicketNFT(tier);
@@ -118,13 +122,15 @@ export default function BcpPaymentPage() {
         const nftData = await nftRes.json();
         if (nftRes.ok && nftData.assetAddress) {
           mintedNftAddress = nftData.assetAddress;
+          mintedMetadataUrl = nftData.metadataUrl || '';
           setNftAddress(mintedNftAddress);
+          setMetadataUrl(mintedMetadataUrl);
         }
       } catch (nftErr) {
         console.log("NFT minting issue (non-blocking):", nftErr);
       }
 
-      await sendEmails(mintedNftAddress);
+      await sendEmails(mintedNftAddress, mintedMetadataUrl);
       setSuccess(true);
 
     } catch (error: any) {
@@ -185,9 +191,11 @@ export default function BcpPaymentPage() {
                 View on Tensor →
               </a>
               <br />
-              <a href={`https://gateway.irys.xyz/${nftAddress}`} target="_blank" className="text-sm text-blue-600 hover:underline">
-                View raw image
-              </a>
+              {metadataUrl && (
+                <a href={metadataUrl} target="_blank" className="text-sm text-blue-600 hover:underline">
+                  View metadata + image
+                </a>
+              )}
             </div>
           ) : (
             <p className="text-sm text-gray-600 mb-4">Your NFT ticket is being processed...</p>

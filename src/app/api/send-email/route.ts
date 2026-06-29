@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
-  const { email, ticketType, quantity, bcpAmount, usdValue, nftAddress } = await request.json();
+  const { email, ticketType, quantity, bcpAmount, usdValue, nftAddress, metadataUrl } = await request.json();
 
   const ticketName = ticketType === 'vip' ? 'VIP Experience' : 'General Admission';
   const amountUSD = (usdValue * quantity).toFixed(2);
 
   const tensorLink = nftAddress ? `https://www.tensor.trade/item/${nftAddress}` : null;
-  const arweaveLink = nftAddress ? `https://gateway.irys.xyz/${nftAddress}` : null;
 
   const emailData = {
     from: "BitcoinPalooza <tickets@bitcoinpalooza.nyc>",
@@ -19,7 +18,6 @@ export async function POST(request: Request) {
         <h2 style="color: #FF6B00; margin-bottom: 8px;">Thank you for your purchase!</h2>
         <p style="font-size: 16px; margin-bottom: 24px;">Your ticket for <strong>BitcoinPalooza UBW 2026</strong> has been confirmed.</p>
 
-        <!-- Order Details -->
         <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
           <h3 style="margin: 0 0 16px 0; font-size: 18px;">Order Details</h3>
           <table style="width: 100%; border-collapse: collapse;">
@@ -38,7 +36,6 @@ export async function POST(request: Request) {
           </table>
         </div>
 
-        <!-- NFT Ticket Section -->
         ${tensorLink ? `
           <div style="background: #fff7ed; border: 2px solid #FF6B00; padding: 24px; border-radius: 14px; margin-bottom: 24px;">
             <h3 style="margin: 0 0 12px 0; color: #c2410f; font-size: 18px;">🎟️ Your Generative NFT Ticket</h3>
@@ -49,12 +46,14 @@ export async function POST(request: Request) {
               View on Tensor →
             </a>
             
-            <div style="margin-top: 16px;">
-              <a href="${arweaveLink}" 
-                 style="color: #FF6B00; font-size: 14px; text-decoration: underline;">
-                View raw image on Arweave
-              </a>
-            </div>
+            ${metadataUrl ? `
+              <div style="margin-top: 16px;">
+                <a href="${metadataUrl}" 
+                   style="color: #FF6B00; font-size: 14px; text-decoration: underline;">
+                  View metadata + image on Arweave
+                </a>
+              </div>
+            ` : ''}
           </div>
         ` : ''}
 
